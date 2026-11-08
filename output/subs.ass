@@ -1,0 +1,15 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV
+Style: Sub,Gaegu,118,&H00FFFFFF,&H00A0379B,&H64000000,1,1,9,3,2,60,60,430
+
+[Events]
+Format: Layer, Start, End, Style, Text
+Dialogue: 0,0:00:00.40,0:00:02.16,Sub,{\fad(120,80)\t(0,160,\fscx108\fscy108)\t(160,300,\fscx100\fscy100)}안녕! 반가워!
+Dialogue: 0,0:00:02.31,0:00:03.81,Sub,{\fad(120,80)\t(0,160,\fscx108\fscy108)\t(160,300,\fscx100\fscy100)}열심히 하고 있구나.
+Dialogue: 0,0:00:03.96,0:00:05.19,Sub,{\fad(120,80)\t(0,160,\fscx108\fscy108)\t(160,300,\fscx100\fscy100)}잘할 수 있어.
+Dialogue: 0,0:00:05.34,0:00:06.19,Sub,{\fad(120,80)\t(0,160,\fscx108\fscy108)\t(160,300,\fscx100\fscy100)}화이팅!
