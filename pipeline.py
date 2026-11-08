@@ -1,5 +1,5 @@
 """대본 검수 → TTS → 무음 트리밍·-14.9 LUFS 정규화 → 1080x1920 30fps 합성 → Whisper 대조 검수"""
-import asyncio, json, re, subprocess, sys, wave, difflib
+import argparse, json, os, re, shutil, subprocess, sys, wave, difflib
 from pathlib import Path
 from gtts import gTTS
 
@@ -30,7 +30,7 @@ def trim(i):
     sh("ffmpeg","-y","-v","error","-i",str(W/f"raw_{i}.mp3"),"-af",f,"-ar","48000","-ac","1",str(W/f"trim_{i}.wav"))
     return dur(W/f"trim_{i}.wav")
 
-def main():
+def main(upload_dir=None, rclone_dest=None, name="twin_cheer.mp4"):
     report = {"script_original": ORIGINAL, "script_reviewed": LINES,
               "review_notes": ["'잘 할수' → '잘할 수' (띄어쓰기: '잘하다'는 한 단어, 의존명사 '수'는 띄움)",
                                "문장 경계에 문장부호 추가, 자막 4줄로 분할",
@@ -103,8 +103,39 @@ def main():
                    "duration": round(float(probe["format"]["duration"]),2), "resolution": f"{v['width']}x{v['height']}", "fps": v["r_frame_rate"],
                    "loudness_lufs": I, "true_peak_dbfs": TPk, "whisper_text": heard, "cer": round(cer,4), "diffs": diffs,
                    "pass": abs(I - TARGET_LUFS) <= 0.5 and v["width"] == OW and v["height"] == OH and cer <= 0.05})
+    # 6) 구글 드라이브 업로드
+    if upload_dir or rclone_dest:
+        report["upload"] = upload(OUT/"twin_cheer.mp4", name, upload_dir, rclone_dest)
     (OUT/"report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=1))
 
+
+def upload(video, name, upload_dir=None, rclone_dest=None):
+    """완성 영상을 구글 드라이브로 올린다.
+    upload_dir : 데스크톱용 Drive 동기화 폴더(예: G:\\내 드라이브\\OUP PUT). 복사하면 Drive 앱이 올린다.
+    rclone_dest: rclone 원격 경로(예: gdrive:OUP PUT). 바로 업로드하고 '링크가 있는 모든 사용자' 링크를 만든다.
+    """
+    result = {}
+    if upload_dir:
+        dst = Path(upload_dir) / name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(video, dst)
+        result["sync_folder"] = str(dst)
+    if rclone_dest:
+        if not shutil.which("rclone"):
+            sys.exit("rclone이 설치되어 있지 않습니다. README의 'rclone으로 바로 업로드' 절을 따라 설치·설정하세요.")
+        remote = f"{rclone_dest.rstrip('/')}/{name}"
+        subprocess.run(["rclone", "copyto", str(video), remote], check=True)
+        link = subprocess.run(["rclone", "link", remote], check=True, capture_output=True, text=True).stdout.strip()
+        result.update({"rclone": remote, "share_link": link})
+    return result
+
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser(description="세로형 응원 영상 자동 편집 + 구글 드라이브 업로드")
+    ap.add_argument("--upload-dir", default=os.environ.get("UPLOAD_DIR"),
+                    help="Drive 동기화 폴더 경로 (환경변수 UPLOAD_DIR)")
+    ap.add_argument("--rclone", default=os.environ.get("RCLONE_DEST"),
+                    help="rclone 원격 경로, 예: gdrive:OUP PUT (환경변수 RCLONE_DEST)")
+    ap.add_argument("--name", default="twin_cheer.mp4", help="드라이브에 올릴 파일 이름")
+    a = ap.parse_args()
+    main(a.upload_dir, a.rclone, a.name)
